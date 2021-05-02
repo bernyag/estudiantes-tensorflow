@@ -21,10 +21,12 @@ from tensorflow.keras.layers import Dense, Dropout
 from tensorflow.keras.callbacks import EarlyStopping, LambdaCallback
 
 #%matplotlib inline
-#tf.logging.set_verbosity(tf.logging.ERROR)
 
 ##leer archivo con pandas
-mat = pd.read_csv('/Users/ianzaidenweber/Desktop/IA/estudiantes/mat_clean.csv')
+#mat = pd.read_csv('/Users/ianzaidenweber/Desktop/IA/estudiantes/mat_clean.csv')
+#mat = pd.read_csv('/Users/bernardoaltamirano/Google Drive/ITAM/9no_Semestre/IA/proyectos/estudiantes-tensorflow/estudiantes/mat_clean.csv')
+mat = pd.read_csv('/Users/bernardoaltamirano/Google Drive/ITAM/9no_Semestre/IA/proyectos/estudiantes-tensorflow/estudiantes/student-mat.csv', ';')
+mat = mat.drop(['school','sex','address','famsize', 'Pstatus', 'Mjob','Fjob','reason', 'guardian', 'schoolsup', 'activities', 'nursery', 'higher','internet', 'romantic', 'famsup', 'paid'], axis=1)
 mat.head()
 
 #Estandarizar datos
@@ -35,11 +37,8 @@ mat_norm.head()
 y_mean = mat['G3'].mean()
 y_std = mat['G3'].std()
 
-def convert_label_value(pred):
-  return int(pred * y_std + y_mean)
-
-print(convert_label_value(0.350088))
-
+def des_estandariza(pred):
+  return float(pred * y_std + y_mean)
 
 #crear columna con diferencia de parcial 2 y parcial 1
 mat_norm['Grade_dif']=mat_norm.G2-mat_norm.G1
@@ -65,10 +64,10 @@ print('X_arr shape: ', X_arr.shape)
 print('Y_arr shape: ', Y_arr.shape)
 
 #
-def get_model():
+def usar_modelo():
     
     model = Sequential([
-        Dense(10, input_shape = (28,), activation = 'relu'),
+        Dense(10, input_shape = (mat.shape[1],), activation = 'relu'),
         Dense(20, activation = 'relu'),
         Dense(5, activation = 'relu'),
         Dense(1)
@@ -76,18 +75,18 @@ def get_model():
 
     model.compile(
         loss='mse',
-        optimizer='adadelta'
+        optimizer='adam'
     )
     
     return model
 
-model = get_model()
+model = usar_modelo()
 model.summary()
 
 #detiene las iteraciones en caso de que hayan k iteraciones sin mejorar
-early_stopping = EarlyStopping(monitor='val_loss', patience = 5)
+termina_antes = EarlyStopping(monitor='val_loss', patience = 300)
 
-model = get_model()
+model = usar_modelo()
 
 #antes de entrenar, hace predicciones aleatorias para comparar con modelo entrenado
 preds_on_untrained = model.predict(X_test)
@@ -97,7 +96,7 @@ history = model.fit(
     X_train, y_train,
     validation_data = (X_test, y_test),
     epochs = 1000,
-    callbacks = [early_stopping]
+    callbacks = [termina_antes]
 )
 
 #perdida de entrenamiento y validacion
@@ -109,11 +108,8 @@ preds_on_trained = model.predict(X_test)
 compare_predictions(preds_on_untrained, preds_on_trained, y_test)
 
 #compara predicciones
-price_on_untrained = [convert_label_value(y) for y in preds_on_untrained]
-price_on_trained = [convert_label_value(y) for y in preds_on_trained]
-price_y_test = [convert_label_value(y) for y in y_test]
+score_on_untrained = [des_estandariza(y) for y in preds_on_untrained]
+score_on_trained = [des_estandariza(y) for y in preds_on_trained]
+score_y_test = [des_estandariza(y) for y in y_test]
 
-compare_predictions(price_on_untrained, price_on_trained, price_y_test)
-
-
-
+compare_predictions(score_on_untrained, score_on_trained, score_y_test)
